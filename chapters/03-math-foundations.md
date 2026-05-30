@@ -1,0 +1,249 @@
+# Chương 3 — Toán cần thiết (The math we actually need)
+
+## 0. Chúng ta đang ở đâu (Where we are)
+
+- **Chương 1:** ta có bản đồ quy trình (pipeline) và biết "học" nghĩa là *lặp lại: dự đoán → đo sai số
+  → chỉnh tham số*.
+- **Chương 2:** ta có công cụ NumPy để viết toán thành code.
+
+Chương này lấp đầy mảnh ghép toán học cho **bước 6 — vòng lặp huấn luyện (training loop)** trên bản đồ.
+Cụ thể, ta trả lời câu hỏi cốt lõi: *"Làm sao mô hình biết nên chỉnh tham số theo hướng nào để sai ít
+hơn?"* Câu trả lời gồm đúng bốn ý tưởng: **đạo hàm (derivative)**, **gradient**, **gradient descent**,
+và **quy tắc chuỗi (chain rule)**. Nắm bốn thứ này là bạn đã hiểu *trái tim* của mọi thuật toán học
+trong khóa học. Chương 4 sẽ dùng chúng ngay để huấn luyện mô hình đầu tiên.
+
+> Toán ở đây **rút gọn đúng phần cần dùng** và luôn kèm trực giác + ví dụ số nhỏ. Không cần nền tảng
+> giải tích vững — ta xây lại từ đầu.
+
+---
+
+## 1. Trực giác & ý tưởng (Intuition & idea)
+
+Nhớ phép ẩn dụ **ném phi tiêu bịt mắt** ở Chương 1: mỗi lần ném, ta được biết *trượt bao xa* và *về
+hướng nào*, rồi chỉnh tay một chút. Bốn khái niệm của chương này chính là phiên bản toán học của câu
+"chỉnh tay theo hướng nào":
+
+- **Đạo hàm (derivative)** trả lời: *"nếu tôi nhích đầu vào lên một chút, kết quả thay đổi bao nhiêu và
+  theo chiều nào?"* — nói cách khác, nó là **độ dốc (slope)**.
+- **Gradient** là đạo hàm cho trường hợp **nhiều tham số cùng lúc**: nó là **mũi tên chỉ hướng dốc lên
+  nhanh nhất**. Đi **ngược** mũi tên đó là cách giảm giá trị nhanh nhất.
+- **Gradient descent** là việc lặp lại "bước một chút theo hướng ngược gradient" để **trượt xuống đáy**
+  (nơi sai số nhỏ nhất).
+- **Quy tắc chuỗi (chain rule)** cho ta tính độ dốc xuyên qua **một chuỗi phép biến đổi** — và một mạng
+  nơ-ron *chính là* một chuỗi phép biến đổi. Đây là hạt nhân của **lan truyền ngược (backpropagation)**
+  ở Chương 7.
+
+---
+
+## 2. Toán học (The math)
+
+### 2.1. Vector, ma trận — ý nghĩa (rất ngắn)
+
+Ở Chương 2 ta đã thao tác với mảng. Về mặt toán: một **vector** $\mathbf{x} = [x_1, \dots, x_D]$ là một
+danh sách số (một điểm trong không gian $D$ chiều); một **ma trận** $W$ là một bảng số biến một vector
+thành một vector khác (một **phép biến đổi tuyến tính**). Phép toán ta dùng nhiều nhất là **tích vô
+hướng (dot product)** và **nhân ma trận** (đã gặp ở Chương 2, mục 2.2). Đó là tất cả những gì cần — phần
+còn lại của chương dành cho giải tích.
+
+### 2.2. Đạo hàm (derivative): độ dốc của một hàm
+
+**Định nghĩa.** Đạo hàm của $f$ tại $x$ là giới hạn của "thay đổi đầu ra chia thay đổi đầu vào" khi
+bước nhích $h$ tiến về 0:
+
+$$ f'(x) \;=\; \lim_{h \to 0} \frac{f(x+h) - f(x)}{h}. $$
+
+**Trực giác.** $f'(x)$ là **độ dốc của tiếp tuyến** tại điểm $x$. Nếu $f'(x) > 0$, hàm đang **đi lên**
+(tăng $x$ thì $f$ tăng); nếu $f'(x) < 0$, hàm đang **đi xuống**; nếu $f'(x) = 0$, ta đang ở chỗ **bằng
+phẳng** (có thể là đáy hoặc đỉnh).
+
+**Vài quy tắc ta thực sự dùng** (chỉ cần nhớ bấy nhiêu):
+
+| Hàm $f(x)$ | Đạo hàm $f'(x)$ | Ghi chú |
+|------------|-----------------|---------|
+| hằng số $c$ | $0$ | đường nằm ngang, không dốc |
+| $x$ | $1$ | |
+| $x^n$ | $n\,x^{n-1}$ | "quy tắc lũy thừa (power rule)"; ví dụ $x^2 \to 2x$ |
+| $c\cdot f(x)$ | $c\cdot f'(x)$ | hằng số đi ra ngoài |
+| $f(x) + g(x)$ | $f'(x) + g'(x)$ | đạo hàm của tổng = tổng đạo hàm |
+
+**Ví dụ số.** Với $f(x) = x^2$ thì $f'(x) = 2x$. Tại $x = 3$, độ dốc là $2\cdot 3 = 6$. Ở mục "Chạy thử"
+ta sẽ kiểm chứng con số 6 này bằng cách nhích $x$ một lượng nhỏ.
+
+### 2.3. Đạo hàm riêng & gradient (nhiều biến)
+
+Hàm mất mát của ta sẽ phụ thuộc **nhiều tham số** cùng lúc, ví dụ $g(w_0, w_1)$. **Đạo hàm riêng
+(partial derivative)** theo $w_0$, viết $\dfrac{\partial g}{\partial w_0}$, nghĩa là: *coi mọi biến khác
+như hằng số*, rồi lấy đạo hàm theo riêng $w_0$.
+
+**Gradient** là **vector gom tất cả đạo hàm riêng** lại:
+
+$$ \nabla g = \left[\frac{\partial g}{\partial w_0},\; \frac{\partial g}{\partial w_1}\right]. $$
+
+**Trực giác.** Hãy hình dung $g$ như độ cao của một ngọn đồi tại tọa độ $(w_0, w_1)$. Gradient $\nabla g$
+là **mũi tên chỉ hướng lên dốc nhanh nhất** tại chỗ bạn đang đứng; độ dài mũi tên cho biết dốc đến đâu.
+
+**Ví dụ số.** Với $g(w_0, w_1) = w_0^2 + w_1^2$:
+
+$$ \frac{\partial g}{\partial w_0} = 2w_0, \quad \frac{\partial g}{\partial w_1} = 2w_1, \quad
+   \nabla g = [\,2w_0,\; 2w_1\,]. $$
+
+Tại $w = [1, 2]$: $\nabla g = [2, 4]$. Đáy của "cái bát" $g$ nằm ở gốc $[0,0]$, và để đi về đáy ta nên
+đi **ngược** hướng $[2, 4]$ — tức về phía gốc. Đó chính là ý tưởng tiếp theo.
+
+### 2.4. Gradient descent: quy tắc cập nhật
+
+Để **giảm** một hàm, ta đứng tại điểm hiện tại và bước một chút theo hướng **ngược gradient** (hướng
+xuống dốc nhanh nhất), rồi lặp lại:
+
+$$ \boxed{\;\theta \;\leftarrow\; \theta \;-\; \eta\, \nabla_\theta J\;} $$
+
+trong đó $\theta$ là tham số, $J$ là hàm cần giảm (sau này là **mất mát**), và $\eta$ (eta) là **tốc độ
+học (learning rate)** — độ dài mỗi bước.
+
+**$\eta$ quan trọng thế nào?**
+
+- $\eta$ **quá nhỏ** → bước tí xíu → học rất chậm.
+- $\eta$ **quá lớn** → bước quá đà, có thể **nhảy vọt qua đáy** và phát tán (không hội tụ).
+
+**Ví dụ số (tính tay).** Giảm $f(x) = x^2$, bắt đầu $x = 4$, $\eta = 0.1$. Vì $f'(x) = 2x$, cập nhật là
+$x \leftarrow x - 0.1\cdot(2x) = x - 0.2x = 0.8x$. Vậy mỗi bước $x$ co lại còn 80%:
+
+$$ 4 \to 3.2 \to 2.56 \to 2.048 \to \dots \to 0. $$
+
+$x$ tiến dần về 0 — đúng đáy của $f$. Đây là **toàn bộ** cơ chế "học": lặp lại quy tắc cập nhật cho đến
+khi mất mát đủ nhỏ.
+
+### 2.5. Quy tắc chuỗi (chain rule): hạt nhân của backprop
+
+Khi một đại lượng phụ thuộc đầu vào **qua nhiều tầng**, độ dốc tổng = **tích các độ dốc** từng tầng.
+Nếu $y = f(u)$ và $u = g(x)$ thì:
+
+$$ \frac{dy}{dx} \;=\; \frac{dy}{du}\cdot\frac{du}{dx}. $$
+
+**Trực giác.** Hãy nghĩ về tốc độ: nếu $u$ thay đổi nhanh gấp 3 lần $x$, và $y$ thay đổi nhanh gấp 2 lần
+$u$, thì $y$ thay đổi nhanh gấp $2\times 3 = 6$ lần $x$. Các "tỉ lệ thay đổi" **nhân nhau** dọc theo
+chuỗi.
+
+**Ví dụ số.** $y = (3x + 1)^2$. Đặt $u = 3x + 1$ nên $y = u^2$:
+
+$$ \frac{dy}{du} = 2u, \qquad \frac{du}{dx} = 3
+   \;\;\Rightarrow\;\; \frac{dy}{dx} = 2u\cdot 3 = 6(3x+1). $$
+
+Tại $x = 1$: $u = 4$, $\dfrac{dy}{dx} = 6\cdot 4 = 24$.
+
+**Vì sao điều này là cốt lõi của deep learning?** Một mạng nơ-ron là một **chuỗi hàm lồng nhau**: đầu
+vào → tầng 1 → kích hoạt → tầng 2 → … → mất mát. Muốn biết "nếu nhích một trọng số ở **tầng đầu** thì
+**mất mát** đổi bao nhiêu", ta **nhân các độ dốc cục bộ** dọc theo chuỗi — đi từ mất mát ngược về trọng
+số đó. Quá trình đi ngược này tên là **lan truyền ngược (backpropagation)**, và Chương 7 sẽ làm nó tường
+tận từng bước.
+
+---
+
+## 3. Cài đặt (Implementation)
+
+Để *thấy* bốn ý tưởng trên là thật, ta kiểm chứng chúng bằng số. Ý tưởng then chốt: có thể **ước lượng
+đạo hàm** mà không cần giải tích, chỉ bằng định nghĩa — nhích đầu vào một lượng nhỏ $h$ và đo thay đổi:
+
+```python
+def numerical_derivative(f, x, h=1e-5):
+    # Đạo hàm = độ dốc khi nhích x một lượng rất nhỏ h (central difference).
+    return (f(x + h) - f(x - h)) / (2 * h)
+```
+
+Với hàm nhiều biến, ta nhích **lần lượt từng biến** để lấy từng đạo hàm riêng, gom lại thành gradient:
+
+```python
+def numerical_gradient(func, w, h=1e-5):
+    grad = np.zeros_like(w)
+    for i in range(len(w)):
+        w_plus = w.copy();  w_plus[i]  += h   # chỉ nhích biến thứ i
+        w_minus = w.copy(); w_minus[i] -= h
+        grad[i] = (func(w_plus) - func(w_minus)) / (2 * h)   # đạo hàm riêng theo biến i
+    return grad
+```
+
+Và một vòng lặp **gradient descent** đúng như quy tắc cập nhật ở mục 2.4:
+
+```python
+x = 4.0
+lr = 0.1
+for step in range(6):
+    grad = 2 * x            # f'(x) = 2x  cho f(x)=x^2
+    x = x - lr * grad       # theta <- theta - lr * grad
+```
+
+Toàn bộ phần minh họa (gồm cả kiểm chứng quy tắc chuỗi) nằm trong `ch03_calculus_demo.py`.
+
+---
+
+## 4. Chạy thử (Run it)
+
+```powershell
+python ch03_calculus_demo.py
+```
+
+**Kết quả mong đợi (expected output)** — vài chữ số cuối của phần số thực có thể **hơi khác** trên máy
+bạn (đạo hàm bằng số là *xấp xỉ*), nhưng phải rất sát giá trị giải tích:
+
+```
+=== 1) Đạo hàm của f(x)=x^2 tại x=3 ===
+  numerical : 6.000000
+  2x        : 6.000000
+=== 2) Gradient của g(w)=w0^2+w1^2 tại w=[1,2] ===
+  numerical : [2. 4.]
+  [2w0,2w1] : [2. 4.]
+=== 3) Gradient descent trên f(x)=x^2 (x0=4, lr=0.1) ===
+  step 1: x = 3.2000, f(x) = 10.2400
+  step 2: x = 2.5600, f(x) = 6.5536
+  step 3: x = 2.0480, f(x) = 4.1943
+  step 4: x = 1.6384, f(x) = 2.6844
+  step 5: x = 1.3107, f(x) = 1.7180
+  step 6: x = 1.0486, f(x) = 1.0995
+=== 4) Quy tắc chuỗi cho y=(3x+1)^2 tại x=1 ===
+  numerical : 24.000000
+  6*(3x+1)  : 24.000000
+```
+
+Ba điều đáng chú ý khi đối chiếu với phần toán:
+
+- **Phần 1 & 4:** đạo hàm tính **bằng số** (chỉ nhích đầu vào) khớp với đạo hàm **giải tích** (6 và 24).
+  Định nghĩa đạo hàm là thật, không phải phép thuật.
+- **Phần 3:** $x$ giảm dần $4 \to 3.2 \to 2.56 \to \dots$, đúng quy luật "co còn 80%" ta tính tay, và
+  $f(x)$ ngày càng nhỏ — mô hình đang **học** cách đạt đáy.
+
+---
+
+## 5. Bài tập (Exercises)
+
+1. **Đạo hàm cơ bản.** Tính $f'(x)$ cho: (a) $f(x) = x^2$; (b) $f(x) = 3x + 1$; (c) $f(x) = x^2 + 2x$;
+   (d) $f(x) = 5$.
+2. **Đạo hàm riêng.** Cho $g(w_0, w_1) = 3w_0 + w_1^2$. Tính $\dfrac{\partial g}{\partial w_0}$ và
+   $\dfrac{\partial g}{\partial w_1}$, rồi viết gradient $\nabla g$ tại $w = [4, 2]$.
+3. **Một bước gradient descent (tính tay).** Với $f(x) = x^2$, đang ở $x = 5$, $\eta = 0.1$. Tính $x$
+   **sau một bước** cập nhật. Sau bước đó, $f(x)$ tăng hay giảm?
+4. **Quy tắc chuỗi.** Cho $y = (2x - 1)^3$. Dùng phép đặt $u = 2x - 1$ để tính $\dfrac{dy}{dx}$, rồi tính
+   giá trị tại $x = 1$.
+5. **(Suy nghĩ)** Vì sao quy tắc cập nhật dùng **trừ** ($\theta \leftarrow \theta - \eta\nabla J$) chứ
+   không phải cộng? Nếu đổi thành **cộng**, $x$ trong Phần 3 sẽ đi về đâu?
+
+<details>
+<summary>Gợi ý lời giải (solution hints)</summary>
+
+1. (a) $2x$; (b) $3$; (c) $2x + 2$; (d) $0$.
+2. $\partial g/\partial w_0 = 3$ (coi $w_1$ là hằng); $\partial g/\partial w_1 = 2w_1$. Tại $[4,2]$:
+   $\nabla g = [3, 4]$.
+3. $x \leftarrow 5 - 0.1\cdot(2\cdot 5) = 5 - 1 = 4$. $f$ giảm từ $25$ xuống $16$.
+4. $\dfrac{dy}{dx} = 3u^2\cdot 2 = 6(2x-1)^2$. Tại $x=1$: $6\cdot 1^2 = 6$.
+5. Vì gradient chỉ hướng **lên dốc**; muốn **giảm** hàm ta đi ngược lại, nên dùng dấu trừ. Nếu dùng dấu
+   cộng, $x$ sẽ **leo lên** và tiến ra vô cực (phát tán) — sai số càng lúc càng lớn.
+
+</details>
+
+---
+
+## 6. Tiếp theo (What's next)
+
+Bạn đã có đủ bốn mảnh ghép toán: đạo hàm, gradient, gradient descent, quy tắc chuỗi. Ở **Chương 4 — Hồi
+quy tuyến tính từ số 0 (Linear regression from scratch)**, ta sẽ ghép tất cả lại để xây **mô hình biết
+tự học** đầu tiên: chọn một đường thẳng, đo sai số bằng **hàm mất mát (loss)**, rồi dùng **gradient
+descent** để mô hình tự tìm đường thẳng tốt nhất — toàn bộ viết tay bằng NumPy.
