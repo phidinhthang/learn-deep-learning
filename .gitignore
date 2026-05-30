@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Data downloaded at runtime (e.g. torchvision MNIST)
+data/
+
+# Saved models / checkpoints
+*.pt
+*.pth
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
