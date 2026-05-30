@@ -116,7 +116,7 @@ signatures below are **fixed** — a chapter must use them verbatim.
 | File | Introduced in | Public surface (must match exactly) |
 |------|---------------|-------------------------------------|
 | `ddl/__init__.py` | Ch 2 | empty package marker |
-| `ddl/preprocessing.py` | Ch 4 | `class Standardizer:` with `fit(X)`, `transform(X)`, `fit_transform(X)`, `inverse_transform(X)`; stores `self.mean_`, `self.std_` |
+| `ddl/preprocessing.py` | Ch 8 | `class Standardizer:` with `fit(X)`, `transform(X)`, `fit_transform(X)`, `inverse_transform(X)`; stores `self.mean_`, `self.std_`. (Originally slated for Ch 4, but moved here so the first model stays minimal; standardization is introduced where MNIST/multiple features make it necessary.) |
 | `ddl/functions.py` | Ch 5 | `sigmoid(z)`, `softmax(z)`, `relu(z)`; losses `mse_loss(y_hat, y)`, `bce_loss(p, y)` (all NumPy) |
 | `ddl/numpy_nn.py` | Ch 6–7 | `class Linear(in_features, out_features)`, `class ReLU()`, `class Sequential(layers)`, `class SoftmaxCrossEntropy()`; each layer has `.forward(x)`, `.backward(grad)`, `.parameters()`; module-level `sgd_step(params, lr)` |
 | `ddl/data.py` | Ch 8 | `load_mnist(flatten=True, normalize=True)` → `(X_train, y_train), (X_test, y_test)` (NumPy); `train_val_test_split(X, y, val_fraction=0.1, test_fraction=0.0, seed=42)`; `iterate_minibatches(X, y, batch_size, shuffle=True, seed=None)` generator |
