@@ -90,20 +90,92 @@ $$ \frac{\partial g}{\partial w_0} = 2w_0, \quad \frac{\partial g}{\partial w_1}
 Tại $w = [1, 2]$: $\nabla g = [2, 4]$. Đáy của "cái bát" $g$ nằm ở gốc $[0,0]$, và để đi về đáy ta nên
 đi **ngược** hướng $[2, 4]$ — tức về phía gốc. Đó chính là ý tưởng tiếp theo.
 
-### 2.4. Gradient descent: quy tắc cập nhật
+### 2.4. Huấn luyện = tối thiểu hóa một hàm — và vì sao không "giải thẳng" được
 
-Để **giảm** một hàm, ta đứng tại điểm hiện tại và bước một chút theo hướng **ngược gradient** (hướng
-xuống dốc nhanh nhất), rồi lặp lại:
+Hãy phát biểu lại mục tiêu cho thật rõ: **huấn luyện một mô hình = tìm bộ tham số $\theta$ làm cho hàm
+mất mát $J(\theta)$ nhỏ nhất.** Nói cách khác, đó là một bài toán **tối ưu hóa (optimization)**: tìm
+**đáy** của một hàm.
+
+Bạn có thể hỏi: *"Giải tích chẳng phải đã dạy cách tìm cực tiểu rồi sao — cho đạo hàm bằng 0 rồi giải
+ra?"* Đúng, với hàm **đơn giản** thì làm được. Ví dụ $f(x) = x^2$: giải $f'(x) = 2x = 0$ ra ngay
+$x = 0$. Đó là lời giải **dạng đóng (closed-form)** — một công thức cho thẳng đáp án. (Thật ra hồi quy
+tuyến tính ở Chương 4 *cũng* có một công thức đóng như vậy.)
+
+Nhưng với một mạng nơ-ron sâu, cách "giải thẳng" **sụp đổ**:
+
+1. **Quá nhiều biến.** $J$ phụ thuộc hàng triệu (đến hàng tỉ) tham số. "Cho gradient bằng 0" trở thành
+   một hệ hàng triệu phương trình phi tuyến chằng chịt — **không có công thức** để giải.
+2. **Quá đắt.** Ngay cả những trường hợp giải được trên giấy cũng đòi hỏi nghịch đảo (invert) những ma
+   trận khổng lồ — tốn kém đến mức bất khả thi.
+3. **Không có toàn cảnh.** Ta thường thậm chí không viết được công thức gọn cho $J$ trên toàn bộ dữ liệu.
+
+Vậy ta cần một phương pháp **khác hẳn**: thay vì giải đúng một phát (bất khả thi), hãy **cải thiện dần
+từng chút một** (dễ). Phương pháp đó chỉ cần làm được hai việc tại điểm hiện tại: (a) tính giá trị $J$,
+và (b) tính **gradient** $\nabla J$. Đó chính là **gradient descent**. Nó đánh đổi "giải đúng một lần
+(không thể)" lấy "cải thiện một chút, lặp thật nhiều lần (làm được)".
+
+> **Sao không thử ngẫu nhiên (random search)?** Trong không gian hàng triệu chiều, dò ngẫu nhiên gần
+> như **không bao giờ** tình cờ tốt lên (đây là "lời nguyền số chiều" — curse of dimensionality).
+> Gradient thì *tặng không* cho ta một hướng **chắc chắn** làm mất mát giảm. Đó là lý do nó mạnh.
+
+### 2.5. Vì sao gradient lại đúng là hướng "dốc nhất"? (phần khó nhất — đi từ từ)
+
+Trong **1 chiều**, mọi thứ hiển nhiên: đạo hàm dương nghĩa là dốc lên, âm nghĩa là dốc xuống; muốn giảm
+thì đi ngược dấu đạo hàm. Nhưng trong **nhiều chiều**, từ một điểm bạn có thể bước theo **vô số hướng**.
+Câu hỏi sống còn: bước theo hướng nào thì hàm giảm **nhanh nhất**?
+
+**Bước 1 — "Độ dốc theo một hướng" là gì?** Chọn một hướng = một **vector đơn vị (unit vector)**
+$\mathbf{d}$ (độ dài đúng bằng 1). Nếu nhích một đoạn nhỏ theo $\mathbf{d}$, hàm thay đổi với một tỉ lệ
+gọi là **đạo hàm theo hướng (directional derivative)**. Nó có một công thức rất gọn — bằng **tích vô
+hướng** của gradient với $\mathbf{d}$:
+
+$$ \text{độ dốc theo hướng } \mathbf{d} \;=\; \nabla f \cdot \mathbf{d}. $$
+
+*Vì sao là tích vô hướng?* Mỗi thành phần của $\mathbf{d}$ cho biết ta đi bao nhiêu theo mỗi trục; nhân
+với độ dốc theo trục đó (chính là đạo hàm riêng $\partial f/\partial w_i$) rồi cộng tất cả lại — đó đúng
+là định nghĩa của tích vô hướng $\sum_i (\partial f/\partial w_i)\, d_i$.
+
+**Bước 2 — Hình học của tích vô hướng.** Nhớ lại công thức: $\nabla f \cdot \mathbf{d} = |\nabla f|\,
+|\mathbf{d}|\cos\alpha$, với $\alpha$ là góc giữa hai vector. Vì $\mathbf{d}$ là vector đơn vị
+($|\mathbf{d}| = 1$):
+
+$$ \text{độ dốc theo hướng } \mathbf{d} \;=\; |\nabla f|\,\cos\alpha. $$
+
+**Bước 3 — Tìm hướng tốt nhất.** $\cos\alpha$ chỉ chạy trong khoảng $[-1, 1]$, nên độ dốc theo hướng chỉ
+chạy từ $-|\nabla f|$ đến $+|\nabla f|$. Hai đầu mút này chính là câu trả lời:
+
+- Dốc **lên** mạnh nhất ($+|\nabla f|$) khi $\alpha = 0^\circ$, tức $\mathbf{d}$ **cùng hướng** $\nabla
+  f$. ⟹ **gradient là hướng dốc lên nhanh nhất (steepest ascent).**
+- Dốc **xuống** mạnh nhất ($-|\nabla f|$) khi $\alpha = 180^\circ$, tức $\mathbf{d} = -\nabla f/|\nabla
+  f|$. ⟹ **ngược gradient là hướng dốc xuống nhanh nhất (steepest descent).**
+
+Đây chính là lý do **toán học** vì sao gradient descent đi theo $-\nabla f$: trong **mọi** hướng có thể
+bước, đó là hướng làm hàm giảm nhiều nhất cho mỗi bước.
+
+**Phép ẩn dụ ngọn đồi trong sương mù.** Bạn đứng trên sườn đồi, sương dày đặc không thấy gì, nhưng chân
+vẫn cảm nhận được độ dốc theo mỗi hướng định bước. Gradient giống một **chiếc kim la bàn luôn chỉ thẳng
+lên phía dốc nhất**. Bước theo bất kỳ hướng nào, độ dốc bạn cảm thấy = mức độ hướng đó "ăn khớp" với
+chiếc kim (chính là $\cos\alpha$). Muốn **xuống** nhanh nhất ư? Chỉ việc quay lưng lại và đi **ngược
+chiều chiếc kim**. Mục "Chạy thử" sẽ cho bạn thấy bằng số: trong các hướng đem ra thử, hướng $-\nabla f$
+cho độ dốc âm nhất, đúng bằng $-|\nabla f|$.
+
+> **Cục bộ, không phải toàn cục (local vs global).** Gradient chỉ ra hướng tốt nhất **ngay tại chỗ đang
+> đứng**. Lặp lại nhiều bước, ta trượt dần xuống một **đáy** (nơi gradient $= \mathbf{0}$, mặt bằng
+> phẳng). Với hàm hình "cái bát" như $x^2$ chỉ có **một** đáy nên chắc chắn về đúng đó. Mặt mất mát của
+> mạng sâu thì gồ ghề, nhiều "thung lũng" (cực tiểu cục bộ — local minima), nhưng thực nghiệm cho thấy
+> gradient descent vẫn tìm được những đáy **đủ tốt** — ta sẽ gặp lại chủ đề này ở các chương sau.
+
+### 2.6. Quy tắc cập nhật & tốc độ học (the update rule & learning rate)
+
+Gộp lại: đứng tại $\theta$, đi một bước nhỏ theo hướng dốc xuống nhanh nhất ($-\nabla J$), rồi lặp lại:
 
 $$ \boxed{\;\theta \;\leftarrow\; \theta \;-\; \eta\, \nabla_\theta J\;} $$
 
-trong đó $\theta$ là tham số, $J$ là hàm cần giảm (sau này là **mất mát**), và $\eta$ (eta) là **tốc độ
-học (learning rate)** — độ dài mỗi bước.
+$J$ là hàm cần giảm (sau này là **mất mát**), còn $\eta$ (eta) là **tốc độ học (learning rate)** — độ dài
+mỗi bước. Nó nhỏ quan trọng nhưng ảnh hưởng rất lớn:
 
-**$\eta$ quan trọng thế nào?**
-
-- $\eta$ **quá nhỏ** → bước tí xíu → học rất chậm.
-- $\eta$ **quá lớn** → bước quá đà, có thể **nhảy vọt qua đáy** và phát tán (không hội tụ).
+- $\eta$ **quá nhỏ** → mỗi bước tí xíu → học rất chậm.
+- $\eta$ **quá lớn** → bước quá đà, có thể **nhảy vọt qua đáy** rồi văng ra xa, không hội tụ (diverge).
 
 **Ví dụ số (tính tay).** Giảm $f(x) = x^2$, bắt đầu $x = 4$, $\eta = 0.1$. Vì $f'(x) = 2x$, cập nhật là
 $x \leftarrow x - 0.1\cdot(2x) = x - 0.2x = 0.8x$. Vậy mỗi bước $x$ co lại còn 80%:
@@ -113,7 +185,23 @@ $$ 4 \to 3.2 \to 2.56 \to 2.048 \to \dots \to 0. $$
 $x$ tiến dần về 0 — đúng đáy của $f$. Đây là **toàn bộ** cơ chế "học": lặp lại quy tắc cập nhật cho đến
 khi mất mát đủ nhỏ.
 
-### 2.5. Quy tắc chuỗi (chain rule): hạt nhân của backprop
+### 2.7. Vì sao deep learning *bắt buộc* cần gradient descent
+
+Giờ ghép các mảnh lại để thấy vì sao đây là **động cơ (engine)** của cả lĩnh vực:
+
+- Một mô hình deep learning là **nhiều tầng xếp chồng** nên hàm mất mát $J(\theta)$ cực kỳ phức tạp,
+  hàng triệu chiều, **không có công thức** tìm đáy (mục 2.4).
+- Nhưng có **đúng hai thứ** ta tính được hiệu quả: giá trị mất mát (qua **lượt tính xuôi — forward
+  pass**) và gradient của nó (qua **lan truyền ngược — backpropagation**, Chương 7). Gradient descent
+  được xây *chính xác* từ hai nguyên liệu này — nên nó khớp một cách hoàn hảo.
+- Nó **co giãn (scales)** tốt: với dữ liệu khổng lồ, ta tính gradient trên từng lô nhỏ (mini-batch) —
+  gọi là **stochastic gradient descent**, Chương 8; với mô hình hàng tỉ tham số, nó vẫn chạy được.
+
+Gần như **mọi** mô hình deep learning bạn từng nghe tên đều được huấn luyện bằng gradient descent (hoặc
+một biến thể tinh chỉnh như **Adam**, Chương 10). Hiểu vững gradient descent = hiểu *cách mọi mô hình
+học*. Đó là lý do ta đầu tư nhiều công đến vậy cho nó.
+
+### 2.8. Quy tắc chuỗi (chain rule): hạt nhân của backprop
 
 Khi một đại lượng phụ thuộc đầu vào **qua nhiều tầng**, độ dốc tổng = **tích các độ dốc** từng tầng.
 Nếu $y = f(u)$ và $u = g(x)$ thì:
@@ -162,7 +250,7 @@ def numerical_gradient(func, w, h=1e-5):
     return grad
 ```
 
-Và một vòng lặp **gradient descent** đúng như quy tắc cập nhật ở mục 2.4:
+Và một vòng lặp **gradient descent** đúng như quy tắc cập nhật ở mục 2.6:
 
 ```python
 x = 4.0
@@ -172,7 +260,19 @@ for step in range(6):
     x = x - lr * grad       # theta <- theta - lr * grad
 ```
 
-Toàn bộ phần minh họa (gồm cả kiểm chứng quy tắc chuỗi) nằm trong `ch03_calculus_demo.py`.
+Cuối cùng, để *tận mắt* thấy "gradient là hướng dốc nhất" (mục 2.5), ta đo độ dốc theo hướng — chính là
+$\nabla f \cdot \mathbf{d}$ — cho nhiều hướng đơn vị $\mathbf{d}$, rồi xác nhận hướng $-\nabla f$ cho độ
+dốc **âm nhất** (bằng $-|\nabla f|$):
+
+```python
+grad = np.array([2.0, 4.0])            # gradient cua g tai w=[1,2]
+grad_norm = np.linalg.norm(grad)       # |grad| = sqrt(20)
+d_neg = -grad / grad_norm              # huong nguoc gradient (da chuan hoa ve do dai 1)
+print(grad @ d_neg)                     # = -|grad|, am nhat trong moi huong don vi
+```
+
+Toàn bộ phần minh họa (gồm cả kiểm chứng quy tắc chuỗi và phép so sánh hướng dốc) nằm trong
+`ch03_calculus_demo.py`.
 
 ---
 
@@ -202,14 +302,22 @@ bạn (đạo hàm bằng số là *xấp xỉ*), nhưng phải rất sát giá 
 === 4) Quy tắc chuỗi cho y=(3x+1)^2 tại x=1 ===
   numerical : 24.000000
   6*(3x+1)  : 24.000000
+=== 5) Gradient la huong doc nhat (steepest direction) ===
+  do doc theo -truc w0   : -2.0000
+  do doc theo -truc w1   : -4.0000
+  do doc theo cheo 45 do : -4.2426
+  do doc theo -gradient  : -4.4721
+  => am nhat = -|grad|    : -4.4721  (chi dat duoc khi di nguoc gradient)
 ```
 
-Ba điều đáng chú ý khi đối chiếu với phần toán:
+Bốn điều đáng chú ý khi đối chiếu với phần toán:
 
 - **Phần 1 & 4:** đạo hàm tính **bằng số** (chỉ nhích đầu vào) khớp với đạo hàm **giải tích** (6 và 24).
   Định nghĩa đạo hàm là thật, không phải phép thuật.
 - **Phần 3:** $x$ giảm dần $4 \to 3.2 \to 2.56 \to \dots$, đúng quy luật "co còn 80%" ta tính tay, và
   $f(x)$ ngày càng nhỏ — mô hình đang **học** cách đạt đáy.
+- **Phần 5:** trong mọi hướng đem ra thử, hướng **ngược gradient** cho độ dốc âm nhất ($-|\nabla g|
+  \approx -4.4721$) — đây là bằng chứng bằng số cho khẳng định "gradient là hướng dốc nhất" ở mục 2.5.
 
 ---
 
@@ -225,6 +333,9 @@ Ba điều đáng chú ý khi đối chiếu với phần toán:
    giá trị tại $x = 1$.
 5. **(Suy nghĩ)** Vì sao quy tắc cập nhật dùng **trừ** ($\theta \leftarrow \theta - \eta\nabla J$) chứ
    không phải cộng? Nếu đổi thành **cộng**, $x$ trong Phần 3 sẽ đi về đâu?
+6. **Hướng dốc nhất.** Xét $g(w) = w_0^2 + w_1^2$ tại $w = [3, 4]$, ở đó gradient là $\nabla g = [6, 8]$.
+   (a) Tính độ dài $|\nabla g|$. (b) Viết **vector đơn vị** chỉ hướng **giảm** $g$ nhanh nhất. (c) Độ dốc
+   theo hướng đó bằng bao nhiêu?
 
 <details>
 <summary>Gợi ý lời giải (solution hints)</summary>
@@ -236,6 +347,8 @@ Ba điều đáng chú ý khi đối chiếu với phần toán:
 4. $\dfrac{dy}{dx} = 3u^2\cdot 2 = 6(2x-1)^2$. Tại $x=1$: $6\cdot 1^2 = 6$.
 5. Vì gradient chỉ hướng **lên dốc**; muốn **giảm** hàm ta đi ngược lại, nên dùng dấu trừ. Nếu dùng dấu
    cộng, $x$ sẽ **leo lên** và tiến ra vô cực (phát tán) — sai số càng lúc càng lớn.
+6. (a) $|\nabla g| = \sqrt{6^2 + 8^2} = \sqrt{100} = 10$. (b) hướng giảm nhanh nhất là $-\nabla g/|\nabla
+   g| = [-0.6,\, -0.8]$. (c) độ dốc theo hướng đó là $-|\nabla g| = -10$ (âm nhất có thể).
 
 </details>
 

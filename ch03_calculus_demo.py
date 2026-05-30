@@ -67,3 +67,24 @@ x1 = 1.0
 print("=== 4) Quy tắc chuỗi cho y=(3x+1)^2 tại x=1 ===")
 print(f"  numerical : {numerical_derivative(y, x1):.6f}")
 print(f"  6*(3x+1)  : {6 * (3 * x1 + 1):.6f}")
+
+
+# ---------- 5) Vì sao gradient là hướng DỐC NHẤT? ----------
+# Tại w=[1,2], gradient của g là [2,4]. Ta đo "độ dốc theo một hướng" = grad . d
+# cho nhiều hướng ĐƠN VỊ d khác nhau, rồi xác nhận hướng -gradient cho độ dốc ÂM NHẤT
+# (giảm g nhanh nhất). Đây là bằng chứng bằng số cho khẳng định ở phần lý thuyết.
+grad = np.array([2.0, 4.0])
+grad_norm = np.linalg.norm(grad)              # |grad| = sqrt(20) ~ 4.4721
+
+d_axis0 = np.array([-1.0,  0.0])              # ngược trục w0
+d_axis1 = np.array([ 0.0, -1.0])              # ngược trục w1
+d_diag  = np.array([-1.0, -1.0]) / np.sqrt(2) # chéo 45 độ (chuẩn hóa về độ dài 1)
+d_neg   = -grad / grad_norm                   # ngược gradient (đã chuẩn hóa)
+
+# Độ dốc theo một hướng đơn vị d chính là tích vô hướng (dot product) grad . d
+print("=== 5) Gradient la huong doc nhat (steepest direction) ===")
+print(f"  do doc theo -truc w0   : {grad @ d_axis0:+.4f}")
+print(f"  do doc theo -truc w1   : {grad @ d_axis1:+.4f}")
+print(f"  do doc theo cheo 45 do : {grad @ d_diag:+.4f}")
+print(f"  do doc theo -gradient  : {grad @ d_neg:+.4f}")
+print(f"  => am nhat = -|grad|    : {-grad_norm:+.4f}  (chi dat duoc khi di nguoc gradient)")
