@@ -302,12 +302,12 @@ bạn (đạo hàm bằng số là *xấp xỉ*), nhưng phải rất sát giá 
 === 4) Quy tắc chuỗi cho y=(3x+1)^2 tại x=1 ===
   numerical : 24.000000
   6*(3x+1)  : 24.000000
-=== 5) Gradient la huong doc nhat (steepest direction) ===
-  do doc theo -truc w0   : -2.0000
-  do doc theo -truc w1   : -4.0000
-  do doc theo cheo 45 do : -4.2426
-  do doc theo -gradient  : -4.4721
-  => am nhat = -|grad|    : -4.4721  (chi dat duoc khi di nguoc gradient)
+=== 5) Gradient là hướng dốc nhất (steepest direction) ===
+  độ dốc theo -trục w0   : -2.0000
+  độ dốc theo -trục w1   : -4.0000
+  độ dốc theo chéo 45 độ : -4.2426
+  độ dốc theo -gradient  : -4.4721
+  => âm nhất = -|grad|    : -4.4721  (chỉ đạt được khi đi ngược gradient)
 ```
 
 Bốn điều đáng chú ý khi đối chiếu với phần toán:
